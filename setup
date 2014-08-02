@@ -1,0 +1,58 @@
+#!/bin/sh
+
+# 确保已安装docker-enter
+echo "Installing docker-enter..."
+declare -F docker-enter || curl -L https://raw.githubusercontent.com/iamfat/boot2docker-gini/master/docker-enter >> ~/.profile
+
+echo "Turn on remote syslog..."
+curl -L https://raw.githubusercontent.com/iamfat/boot2docker-gini/master/remote-syslog | sh
+
+echo "Pulling Docker Images..." 
+docker pull iamfat/rsyslog
+docker pull iamfat/mysql
+docker pull iamfat/redis
+docker pull iamfat/gini-dev
+ 
+echo "Preparing Environment..."
+
+: ${BASE_DIR:=/mnt/sda1/data}
+
+# remote logging
+boot2docker ssh "sudo mkdir -p $BASE_DIR/etc/rsyslog.d"
+boot2docker ssh "sudo echo '*.* @192.168.59.3' > $BASE_DIR/etc/rsyslog.d/20-host.conf"
+ 
+# mysql
+boot2docker ssh "sudo mkdir -p $BASE_DIR/etc/mysql"
+docker run --rm iamfat/mysql sh -c "tar -C /etc/mysql -cf - ." | boot2docker ssh "sudo tar -C $BASE_DIR/etc/mysql -x"
+boot2docker ssh "sudo mkdir -p $BASE_DIR/log/mysql"
+ 
+# redis
+boot2docker ssh "sudo mkdir -p $BASE_DIR/etc/redis"
+docker run --rm iamfat/redis sh -c "tar -C /etc/redis -cf - ." | boot2docker ssh "sudo tar -C $BASE_DIR/etc/redis -x"
+boot2docker ssh "sudo mkdir -p $BASE_DIR/log/redis"
+ 
+# nginx
+boot2docker ssh "sudo mkdir -p $BASE_DIR/etc/nginx/sites-enabled"
+boot2docker ssh "sudo mkdir -p $BASE_DIR/log/nginx"
+
+echo "Starting Containers..."
+docker run --name rsyslog -v /dev:/dev --privileged \
+    -v $BASE_DIR/etc/rsyslog.d:/etc/rsyslog.d \
+    -d iamfat/rsyslog
+
+docker run --name mysql -v /dev/log:/dev/log -v $BASE_DIR:/data --privileged \
+    -v $BASE_DIR/etc/mysql:/etc/mysql \
+    -v $BASE_DIR/log/mysql:/var/log/mysql \
+    -d iamfat/mysql
+
+docker run --name redis -v /dev/log:/dev/log -v $BASE_DIR:/data --privileged \
+    -v $BASE_DIR/etc/redis:/etc/redis \
+    -v $BASE_DIR/log/redis:/var/log/redis \
+    -d iamfat/redis
+
+docker run --name gini-dev -v /dev/log:/dev/log -v $BASE_DIR:/data --privileged \
+    -v $BASE_DIR/etc/nginx/sites-enabled:/etc/nginx/sites-enabled \
+    -v $BASE_DIR/log/nginx:/var/log/nginx \
+    --link mysql:mysql --link redis:redis \
+    -p 80:80 \
+    -d iamfat/gini-dev

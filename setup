@@ -1,5 +1,7 @@
 #!/bin/sh
 
+export DOCKER_HOST=tcp://$(boot2docker ip 2>/dev/null):2375
+
 # 确保已安装docker-enter
 echo "Installing docker-enter..."
 declare -F docker-enter || curl -L https://raw.githubusercontent.com/iamfat/boot2docker-gini/master/docker-enter >> ~/.profile
@@ -36,7 +38,6 @@ boot2docker ssh "sudo mkdir -p $BASE_DIR/etc/nginx/sites-enabled"
 boot2docker ssh "sudo mkdir -p $BASE_DIR/log/nginx"
 
 # gini
-boot2docker ssh ""
 
 echo "Starting Containers..."
 docker run --name rsyslog -v /dev:/dev --privileged \

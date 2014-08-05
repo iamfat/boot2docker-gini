@@ -25,7 +25,7 @@ npm i -g hostile
 ## 2. 安装我们自己的环境
 
 ```bash
-curl -L https://raw.githubusercontent.com/iamfat/boot2docker-gini/master/setup | sh
+curl -sL https://raw.githubusercontent.com/iamfat/boot2docker-gini/master/setup | sh
 ```
 
 ## 3. 配置你的专门应用

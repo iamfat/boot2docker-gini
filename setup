@@ -4,10 +4,11 @@ export DOCKER_HOST=tcp://$(boot2docker ip 2>/dev/null):2375
 
 # 确保已安装docker-enter
 echo "Installing docker-enter..."
-declare -F docker-enter || curl -L https://raw.githubusercontent.com/iamfat/boot2docker-gini/master/docker-enter >> ~/.profile
+declare -F docker-enter || curl -sL https://raw.githubusercontent.com/iamfat/boot2docker-gini/master/docker-enter >> ~/.profile
+. ~/.profile
 
 echo "Turn on remote syslog..."
-curl -L https://raw.githubusercontent.com/iamfat/boot2docker-gini/master/remote-syslog | sh
+curl -sL https://raw.githubusercontent.com/iamfat/boot2docker-gini/master/remote-syslog | sh
 
 echo "Pulling Docker Images..." 
 docker pull iamfat/rsyslog

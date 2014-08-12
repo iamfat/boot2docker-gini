@@ -22,7 +22,7 @@ echo "Preparing Environment..."
 
 # remote logging
 boot2docker ssh "sudo mkdir -p $BASE_DIR/etc/rsyslog.d"
-boot2docker ssh "sudo echo '*.* @192.168.59.3' > $BASE_DIR/etc/rsyslog.d/20-host.conf"
+boot2docker ssh "sudo echo '*.* @192.168.59.3' | sudo tee $BASE_DIR/etc/rsyslog.d/20-host.conf"
  
 # mysql
 boot2docker ssh "sudo mkdir -p $BASE_DIR/etc/mysql"
@@ -63,10 +63,10 @@ docker run --name gini-dev -v /dev/log:/dev/log -v $BASE_DIR:/data --privileged 
     -d iamfat/gini-dev
 
 # make sure PHP session works
-docker-enter gini-dev 'chmod a+wt,go-r /var/lib/php5'
+docker-enter gini-dev 'sudo chmod a+wt,go-r /var/lib/php5'
 
 echo "Prepare Gini Modules Dir..."
 docker-enter gini-dev 'mkdir -p /data/gini-modules'
-docker-enter gini-dev '[ -d /data/gini-modules/gini ] || git clone https://github.com/iamfat/gini /data/gini-modules/gini'
+docker-enter gini-dev '[ -d /data/gini-modules/gini ]' || docker-enter gini-dev 'git clone https://github.com/iamfat/gini /data/gini-modules/gini'
 docker-enter gini-dev 'curl -Lo /etc/profile.d/gini.sh https://raw.githubusercontent.com/iamfat/boot2docker-gini/master/gini.sh'
 

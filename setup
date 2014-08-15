@@ -8,15 +8,15 @@ declare -F docker-enter || curl -sL https://raw.githubusercontent.com/iamfat/boo
 . ~/.profile
 
 echo "Turn on remote syslog..."
-curl -sL https://raw.githubusercontent.com/iamfat/boot2docker-gini/master/remote-syslog | sh
+curl -sL https://raw.githubusercontent.com/iamfat/boot2docker-gini/master/remote-syslog | sudo sh
 
-echo "Pulling Docker Images..." 
+echo "Pulling latest docker images..." 
 docker pull iamfat/rsyslog
 docker pull iamfat/mysql
 docker pull iamfat/redis
 docker pull iamfat/gini-dev
  
-echo "Preparing Environment..."
+echo "Preparing environment..."
 
 : ${BASE_DIR:=/mnt/sda1/data}
 
@@ -24,43 +24,36 @@ echo "Preparing Environment..."
 boot2docker ssh "sudo mkdir -p $BASE_DIR/etc/rsyslog.d"
 boot2docker ssh "sudo echo '*.* @192.168.59.3' | sudo tee $BASE_DIR/etc/rsyslog.d/20-host.conf"
  
-# mysql
-boot2docker ssh "sudo mkdir -p $BASE_DIR/etc/mysql"
-docker run --rm iamfat/mysql sh -c "tar -C /etc/mysql -cf - ." | boot2docker ssh "sudo tar -C $BASE_DIR/etc/mysql -x"
-boot2docker ssh "sudo mkdir -p $BASE_DIR/log/mysql"
- 
-# redis
-boot2docker ssh "sudo mkdir -p $BASE_DIR/etc/redis"
-docker run --rm iamfat/redis sh -c "tar -C /etc/redis -cf - ." | boot2docker ssh "sudo tar -C $BASE_DIR/etc/redis -x"
-boot2docker ssh "sudo mkdir -p $BASE_DIR/log/redis"
- 
 # nginx
 boot2docker ssh "sudo mkdir -p $BASE_DIR/etc/nginx/sites-enabled"
 boot2docker ssh "sudo mkdir -p $BASE_DIR/log/nginx"
 
-# gini
-
-echo "Starting Containers..."
-docker run --name rsyslog -v /dev:/dev --privileged \
+echo "Starting containers..."
+docker run --name rsyslog --privileged \
+    -v /dev:/dev \
     -v $BASE_DIR/etc/rsyslog.d:/etc/rsyslog.d \
     -d iamfat/rsyslog
 
-docker run --name mysql -v /dev/log:/dev/log -v $BASE_DIR:/data --privileged \
-    -v $BASE_DIR/etc/mysql:/etc/mysql \
-    -v $BASE_DIR/log/mysql:/var/log/mysql \
-    -d iamfat/mysql
+docker run --name mariadb --privileged \
+    -v /dev/log:/dev/log -v $BASE_DIR:/data \ 
+    -d iamfat/mariadb
 
-docker run --name redis -v /dev/log:/dev/log -v $BASE_DIR:/data --privileged \
-    -v $BASE_DIR/etc/redis:/etc/redis \
-    -v $BASE_DIR/log/redis:/var/log/redis \
+docker run --name redis --privileged \
+    -v /dev/log:/dev/log -v $BASE_DIR:/data \
     -d iamfat/redis
 
-docker run --name gini-dev -v /dev/log:/dev/log -v $BASE_DIR:/data --privileged \
-    -v $BASE_DIR/etc/nginx/sites-enabled:/etc/nginx/sites-enabled \
-    -v $BASE_DIR/log/nginx:/var/log/nginx \
-    --link mysql:mysql --link redis:redis \
-    -p 80:80 \
+docker run --name gini-dev --privileged \
+    -v /dev/log:/dev/log -v $BASE_DIR:/data \
+    --link mariadb:mysql --link redis:redis \
     -d iamfat/gini-dev
+
+docker run --name nginx --privileged \
+    -v /dev/log:/dev/log -v $BASE_DIR:/data \
+    -v $BASE_DIR/etc/nginx/sites-enabled:/etc/nginx/sites-enabled \
+    -v $BASE_DIR/var/log/nginx:/var/log/nginx \
+    --link gini-dev:gini-dev \
+    -p 80:80 \
+    -d iamfat/nginx
 
 # make sure PHP session works
 docker-enter gini-dev 'sudo chmod a+wt,go-r /var/lib/php5'

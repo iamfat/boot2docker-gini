@@ -12,7 +12,7 @@ curl -sL https://raw.githubusercontent.com/iamfat/boot2docker-gini/master/remote
 
 echo "Pulling latest docker images..." 
 docker pull iamfat/rsyslog
-docker pull iamfat/mysql
+docker pull iamfat/mariadb
 docker pull iamfat/redis
 docker pull iamfat/gini-dev
  
@@ -35,7 +35,7 @@ docker run --name rsyslog --privileged \
     -d iamfat/rsyslog
 
 docker run --name mariadb --privileged \
-    -v /dev/log:/dev/log -v $BASE_DIR:/data \ 
+    -v /dev/log:/dev/log -v $BASE_DIR:/data \
     -d iamfat/mariadb
 
 docker run --name redis --privileged \

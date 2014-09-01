@@ -29,6 +29,11 @@ boot2docker ssh "sudo mkdir -p $BASE_DIR/etc/nginx/sites-enabled"
 boot2docker ssh "sudo mkdir -p $BASE_DIR/log/nginx"
 
 echo "Starting containers..."
+
+# 所有容器的/data都被映射到宿主机的$BASE_DIR, 便于容器间共享
+# 特别是gini-dev和nginx的容器, 由于nginx处理静态文件的时候需要自己访问, 而处理php文件需要传递给gini-dev
+# 所以这两个容器应该在要访问php脚本的部分共享同一个文件目录
+
 docker run --name rsyslog --privileged \
     -v /dev:/dev \
     -v $BASE_DIR/etc/rsyslog.d:/etc/rsyslog.d \
@@ -56,10 +61,15 @@ docker run --name nginx --privileged \
     -d iamfat/nginx
 
 # make sure PHP session works
+# 确保gini-dev容器里面的php5目录权限正确
 docker-enter gini-dev 'chmod a+wt,go-r /var/lib/php5'
+# 确保gini-dev容器里面正确配置了区域设置
 docker-enter gini-dev '/usr/sbin/update-locale LANG="en_US.UTF-8" LANGUAGE="en_US:en"'
 
 echo "Prepare Gini Modules Dir..."
+# 确保/data/gini-modules目录存在
 docker-enter gini-dev 'mkdir -p /data/gini-modules'
+# 在gini-modules上面clone一个最新的gini用于开发, 重载掉gini-dev本身利用composer在系统全局安装的gini库
 docker-enter gini-dev '[ -d /data/gini-modules/gini ]' || docker-enter gini-dev 'git clone https://github.com/iamfat/gini /data/gini-modules/gini'
+# 把开发需要的一些路径和环境变量加入到容器中
 docker-enter gini-dev 'curl -sLo /etc/profile.d/gini.sh https://raw.githubusercontent.com/iamfat/boot2docker-gini/master/gini.sh'
